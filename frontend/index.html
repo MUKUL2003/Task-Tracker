@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head><title>Task Tracker</title></head>
+<body>
+  <h1>Tasks</h1>
+  <input id="newTask" placeholder="New task">
+  <button onclick="addTask()">Add</button>
+  <ul id="taskList"></ul>
+  <script>
+    async function loadTasks() {
+      const res = await fetch('/api/tasks');
+      const tasks = await res.json();
+      document.getElementById('taskList').innerHTML = tasks.map(t =>
+        `<li>${t.title} ${t.done ? '✓' : ''} <button onclick="deleteTask(${t.id})">x</button></li>`
+      ).join('');
+    }
+    async function addTask() {
+      const title = document.getElementById('newTask').value;
+      await fetch('/api/tasks', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({title}) });
+      document.getElementById('newTask').value = '';
+      loadTasks();
+    }
+    async function deleteTask(id) {
+      await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+      loadTasks();
+    }
+    loadTasks();
+  </script>
+</body>
+</html>
