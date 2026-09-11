@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: task-tracker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: task-backend:v1
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef: {name: postgres-secret, key: POSTGRES_USER}
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef: {name: postgres-secret, key: POSTGRES_PASSWORD}
+        envFrom:
+        - configMapRef:
+            name: backend-config
+        ports:
+        - containerPort: 8000
+        readinessProbe:
+          httpGet: 
+            path: /health 
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet: 
+            path: /health 
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 20
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata: 
+  name: backend-service
+  namespace: task-tracker
+spec:
+  selector:
+    app: backend
+  ports:
+    - port: 8000
