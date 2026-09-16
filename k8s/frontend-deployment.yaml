@@ -13,6 +13,8 @@ spec:
       labels: 
         app: frontend
     spec:
+      serviceAccountName: frontend-sa
+      automountServiceAccountToken: false
       containers:
       - name: frontend
         image: task-frontend:v1
