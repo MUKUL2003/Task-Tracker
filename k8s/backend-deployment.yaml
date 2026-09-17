@@ -17,7 +17,7 @@ spec:
       automountServiceAccountToken: false
       containers:
       - name: backend
-        image: task-backend:v1
+        image: localhost:5001/task-backend:v1
         imagePullPolicy: IfNotPresent
         env:
         - name: DB_USER

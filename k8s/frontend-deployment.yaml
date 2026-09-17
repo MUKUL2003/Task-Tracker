@@ -17,7 +17,7 @@ spec:
       automountServiceAccountToken: false
       containers:
       - name: frontend
-        image: task-frontend:v1
+        image: localhost:5001/task-frontend:v1
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80
