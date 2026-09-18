@@ -1,0 +1,30 @@
+# templates/frontend.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels: {app: frontend}
+  template:
+    metadata:
+      labels: {app: frontend}
+    spec:
+      serviceAccountName: {{ .Values.frontend.serviceAccount }}
+      automountServiceAccountToken: false
+      containers:
+      - name: frontend
+        image: {{ .Values.registry }}/{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}
+        imagePullPolicy: IfNotPresent
+        ports: [{containerPort: {{ .Values.frontend.port }}}]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector: {app: frontend}
+  ports: [{port: {{ .Values.frontend.port }}}]

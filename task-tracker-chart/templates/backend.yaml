@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: {{ .Release.Namespace }}
+data:
+  DB_HOST: postgres-service
+  DB_PORT: "5432"
+  DB_NAME: {{ .Values.postgres.secret.db }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.backend.autoscaling.minReplicas }}
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      serviceAccountName: {{ .Values.backend.serviceAccount }}
+      automountServiceAccountToken: false
+      containers:
+      - name: backend
+        image: {{ .Values.registry }}/{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef: {name: postgres-secret, key: POSTGRES_USER}
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef: {name: postgres-secret, key: POSTGRES_PASSWORD}
+        envFrom:
+        - configMapRef:
+            name: backend-config
+        ports:
+        - containerPort: {{ .Values.backend.port }}
+        readinessProbe:
+          httpGet: {path: /health, port: {{ .Values.backend.port }}}
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet: {path: /health, port: {{ .Values.backend.port }}}
+          initialDelaySeconds: 10
+          periodSeconds: 20
+        resources:
+          requests: {{ toYaml .Values.backend.resources.requests | nindent 12 }}
+          limits: {{ toYaml .Values.backend.resources.limits | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: backend
+  ports:
+  - port: {{ .Values.backend.port }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-hpa
+  namespace: {{ .Release.Namespace }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend
+  minReplicas: {{ .Values.backend.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.backend.autoscaling.maxReplicas }}
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target: {type: Utilization, averageUtilization: {{ .Values.backend.autoscaling.targetCPUUtilizationPercentage }}}

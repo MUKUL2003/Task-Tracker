@@ -1,12 +1,13 @@
+{{- range .Values.networkPolicies }}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: backend-allow-ingress
-  namespace: task-tracker
+  name: {{ .app }}-allow-ingress
+  namespace: {{ $.Release.Namespace }}
 spec:
   podSelector:
     matchLabels:
-      app: backend
+      app: {{ .app }}
   policyTypes:
   - Ingress
   ingress:
@@ -16,4 +17,6 @@ spec:
           kubernetes.io/metadata.name: ingress-nginx
     ports:
     - protocol: TCP
-      port: 8000
+      port: {{ .port }}
+---
+{{- end }}

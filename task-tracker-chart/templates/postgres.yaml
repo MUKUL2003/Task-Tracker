@@ -1,0 +1,58 @@
+# templates/postgres.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  namespace: {{ .Release.Namespace }}
+type: Opaque
+stringData:
+  POSTGRES_USER: {{ .Values.postgres.secret.user }}
+  POSTGRES_PASSWORD: {{ .Values.postgres.secret.password }}
+  POSTGRES_DB: {{ .Values.postgres.secret.db }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: {{ .Release.Namespace }}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: {{ .Values.postgres.storage }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: postgres}
+  template:
+    metadata:
+      labels: {app: postgres}
+    spec:
+      serviceAccountName: {{ .Values.postgres.serviceAccount }}
+      automountServiceAccountToken: false
+      containers:
+      - name: postgres
+        image: {{ .Values.postgres.image }}
+        envFrom:
+        - secretRef: {name: postgres-secret}
+        ports: [{containerPort: 5432}]
+        volumeMounts:
+        - {name: pgdata, mountPath: /var/lib/postgresql/data, subPath: pgdata}
+      volumes:
+      - name: pgdata
+        persistentVolumeClaim: {claimName: postgres-pvc}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector: {app: postgres}
+  ports: [{port: 5432}]
